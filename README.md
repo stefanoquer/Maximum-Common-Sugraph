@@ -12,15 +12,44 @@ Ciaran McCreesh, Patrick Prosser, and James Trimble, "A Partitioning Algorithm f
 
 in the following directions:
 
-- Version v1 is a sequential re-implementation of the original code in C language. This code constitutes the starting version for all subsequent implementations, as it is more coherent with all following requirements, modifications, and choices.
+- Version v1 is a sequential re-implementation of the original code in C language. This code constitutes the starting version for all subsequent implementations, as it is more coherent with all the following requirements, modifications, and choices.
 
 - Version v2 is a C multi-thread version logically derived from v1.
 
-- Version v3 is an intermediate CPU single-thread implementation that removes recursion and decreases memory usage. It is logically the starting point for comparison for the following two versions.
+- Version v3 is an intermediate CPU single-thread implementation that removes recursion and decreases memory usage. It is logically the starting point for the comparison of the following two versions.
 
-- Version v4 is a CPU multi-thread implementation based on the same principles of the following CUDA implementation.
+- Version v4 is a CPU multi-thread implementation based on the same principles as the following CUDA implementation.
 
 - Version v5 is the GPU many-thread implementation based on v3 and v4.
+
+All versions should have a small online help that can be activated with the option "--help":
+
+-c, --connected            Solve max common CONNECTED subgraph problem
+-l, --lad                  Read LAD format
+-q, --quiet                Quiet output
+-t, --timeout=timeout      Set timeout of TIMEOUT seconds
+-v, --verbose              Verbose output
+-?, --help                 Give this help list
+    --usage                Give a short usage message
+
+The tools should accept graphs in different formats, i.e., at least in bin aty and ladder format. Here is an example of how to run version v1 on the graph pair {mcs10_r02_s20.A00, mcs10_r02_s20.B00}:
+
+$ ./v1 -v mcs10_r02_s20.A00 mcs10_r02_s20.B00
+20 vertices
+new Incumbent: |0 0|
+new Incumbent: |0 0| |1 3|
+new Incumbent: |0 0| |1 3| |11 8|
+new Incumbent: |0 0| |1 3| |11 8| |19 18|
+new Incumbent: |0 0| |1 3| |11 8| |19 18| |9 2|
+new Incumbent: |0 0| |1 3| |11 8| |19 18| |9 2| |4 4|
+new Incumbent: |0 0| |1 3| |11 8| |19 18| |9 2| |4 4| |13 5|
+new Incumbent: |0 0| |1 3| |11 8| |19 18| |9 2| |4 4| |13 5| |6 6|
+new Incumbent: |0 0| |1 3| |11 8| |19 18| |18 2| |10 14| |4 6| |15 11| |12 5|
+new Incumbent: |0 0| |1 3| |11 13| |19 17| |2 16| |7 2| |5 12| |12 5| |13 1| |18 11|
+new Incumbent: |0 0| |1 13| |19 17| |16 16| |6 5| |13 2| |14 18| |8 4| |12 7| |9 11| |17 19|
+Solution size 11
+(0 -> 0) (1 -> 13) (6 -> 5) (8 -> 4) (9 -> 11) (12 -> 7) (13 -> 2) (14 -> 18) (16 -> 16) (17 -> 19) (19 -> 17)
+Final Size 11 -  Final Time 0000.1508333300
 
 Please refer to
 https://arxiv.org/abs/1908.06418
