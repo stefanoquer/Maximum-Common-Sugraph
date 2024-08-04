@@ -1,7 +1,8 @@
 # graphISO
 Graph Isomorphism
 
-Tools to compute the Maximum Common Subgraph between two graphs
+This repositpry stores some programs to compute the Maximum Common Subgraph between two graphs.
+The code in written in C/C++ language.
 Please refer to the following paper for a complete description of the tools:
 
 S. Quer, A. Marcelli, G. Squillero, "The Maximum Common Subgraph Problem: A Parallel and Multi-Engine Approach," Computation, Publisher MDPI AG, Switzerland, Vol. 8, N. 2, Article Number. 48, 2020, pp. 1-29, https://www.mdpi.com/2079-3197/8/2/48/pdf, ISSN 2079-3197, DOI: 10.3390/computation8020048.
