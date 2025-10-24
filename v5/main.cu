@@ -261,14 +261,16 @@ uchar find_min_value(uchar *arr, uchar start_idx, uchar len){
 }
 
 __host__  __device__
-void select_bidomain(uchar domains[][BDS], uint bd_pos,  uchar *left, int current_matching_size, bool connected){
+bool select_bidomain(uchar domains[][BDS], uint bd_pos,  uchar *left, int current_matching_size, bool connected){
 	int i;
 	uint min_size = UINT_MAX;
 	uint min_tie_breaker = UINT_MAX;
 	uint best = UINT_MAX;
 	uchar *bd;
 	for (i = bd_pos - 1, bd = &domains[i][L]; i >= 0 && bd[P] == current_matching_size; i--, bd = &domains[i][L]) {
-		if (connected && current_matching_size>0 && !bd[ADJ]) continue;
+		if (connected && current_matching_size>0 && !bd[ADJ]) {
+			continue;
+		}
 		int len = bd[LL] > bd[RL] ? bd[LL] : bd[RL];
 		if (len < min_size) {
 			min_size = len;
@@ -287,7 +289,11 @@ void select_bidomain(uchar domains[][BDS], uint bd_pos,  uchar *left, int curren
 		for(i = 0; i < BDS; i++) tmp[i] = domains[best][i];
 		for(i = 0; i < BDS; i++) domains[best][i] = domains[bd_pos-1][i];
 		for(i = 0; i < BDS; i++) domains[bd_pos-1][i] = tmp[i];
-
+	}
+	if (best == UINT_MAX) {
+		return false;
+	} else {
+		return true;
 	}
 }
 
@@ -329,7 +335,7 @@ void d_mcs(uchar *args, uint n_threads, uchar a_size, uint *args_i, uint actual_
 	sh_inc = actual_inc;
 	__syncthreads();
 	if (my_idx < n_threads) {
-		for (int i = args_i[my_idx]; i < last_arg && ( my_idx < n_threads-1 &&  i < args_i[my_idx +1]);) {
+		for (int i = args_i[my_idx]; i < last_arg && ( my_idx == n_threads-1 ||  i < args_i[my_idx +1]);) {
 			add_bidomain(domains, &bd_pos, args[i++], args[i++], args[i++], args[i++], args[i++], args[i++]);
 			for (int p = 0; p < domains[bd_pos - 1][P]; p++)
 				cur[p][L] = args[i++];
@@ -342,10 +348,15 @@ void d_mcs(uchar *args, uint n_threads, uchar a_size, uint *args_i, uint actual_
 		}
 		while (bd_pos > 0) {
 			uchar *bd = &domains[bd_pos - 1][L];
-			if (calc_bound(domains, bd_pos, bd[P], &bd_n) + bd[P] <= sh_inc	|| (bd[LL] == 0 && bd[RL] == bd[IRL])) {
+			
+			if (calc_bound(domains, bd_pos, bd[P], &bd_n) + bd[P] + (bd[RL] != bd[IRL]) <= sh_inc || (bd[LL] == 0 && bd[RL] == bd[IRL])) {
 				bd_pos--;
+                continue;
 			} else {
-				select_bidomain(domains, bd_pos, left, domains[bd_pos - 1][P], connected);
+				if (!select_bidomain(domains, bd_pos, left, domains[bd_pos - 1][P], connected)) {
+					bd_pos--;
+					continue;
+				}
 				if (bd[RL] == bd[IRL]) {
 					v = find_min_value(left, bd[L], bd[LL]);
 					remove_from_domain(left, &bd[L], &bd[LL], v);
@@ -422,13 +433,11 @@ void h_generate_next_domains(uchar domains[][BDS], uint *bd_pos, uint cur_pos,
 		uchar r_len = partition(right, bd[R], bd[RL], adjmat1[w]);
 
 		if (bd[LL] - l_len && bd[RL] - r_len) {
-			add_bidomain(domains, bd_pos, bd[L] + l_len, bd[R] + r_len,
-					bd[LL] - l_len, bd[RL] - r_len, bd[ADJ], (uchar) (cur_pos));
+			add_bidomain(domains, bd_pos, bd[L] + l_len, bd[R] + r_len, bd[LL] - l_len, bd[RL] - r_len, bd[ADJ], (uchar) (cur_pos));
 			bound += MIN(bd[LL] - l_len, bd[RL] - r_len);
 		}
 		if (l_len && r_len) {
-			add_bidomain(domains, bd_pos, bd[L], bd[R], l_len, r_len, true,
-					(uchar) (cur_pos));
+			add_bidomain(domains, bd_pos, bd[L], bd[R], l_len, r_len, true, (uchar) (cur_pos));
 			bound += MIN(l_len, r_len);
 		}
 	}
@@ -558,7 +567,7 @@ void mcs(uchar incumbent[][2], uchar *inc_pos) {
 		}
 		uchar *bd = &domains[bd_pos - 1][L];
 
-		if (calc_bound(domains, bd_pos, bd[P], &bd_n) + bd[P] <= *inc_pos || (bd[LL] == 0 && bd[RL] == bd[IRL])) {
+		if (calc_bound(domains, bd_pos, bd[P], &bd_n) + bd[P] + (bd[RL] != bd[IRL]) <= *inc_pos || (bd[LL] == 0 && bd[RL] == bd[IRL])) {
 			bd_pos--;
 			continue;
 		}
@@ -582,7 +591,7 @@ void mcs(uchar incumbent[][2], uchar *inc_pos) {
 					args[arg_i] = cur[i][R];
 				for (i = 0; i < n0; i++, arg_i++)
 					args[arg_i] = left[i];
-				for (i = 0; i < n0; i++, arg_i++)
+				for (i = 0; i < n1; i++, arg_i++)
 					args[arg_i] = right[i];
 			}
 			n_threads++;
@@ -594,7 +603,11 @@ void mcs(uchar incumbent[][2], uchar *inc_pos) {
 			continue;
 		}
 
-		select_bidomain(domains, bd_pos, left, domains[bd_pos - 1][P], arguments.connected);
+		bool found = select_bidomain(domains, bd_pos, left, domains[bd_pos - 1][P], arguments.connected);
+		if (!found) {
+			bd_pos--;
+			continue;
+		}
 		if (bd[RL] == bd[IRL]) {
 			v = find_min_value(left, bd[L], bd[LL]);
 			remove_from_domain(left, &bd[L], &bd[LL], v);
